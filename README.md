@@ -1,2 +1,2 @@
-# madzhab-oximeter
-Contains an android application and a python-based oximeter prototype
+# Madzhab Oximeter: An Android-Based Oximeter Application
+Madzhab Oximeter is an application for calculating oxygen saturation (SPO2) by using the smartphone's camera. The app records a video of your finger for 5 seconds, and then it calculates the SPO2 based on the red and blue channel from the video. This repository contains the prototype, which is on a jupyter notebook format, and also the application itself that is based on Android (Java).
