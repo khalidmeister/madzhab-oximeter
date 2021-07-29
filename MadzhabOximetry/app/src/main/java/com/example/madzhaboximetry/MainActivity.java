@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -17,6 +18,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -32,6 +34,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void getCameraPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, CAMERA_PERMISSION_CODE);
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, CAMERA_PERMISSION_CODE);
         }
     }
 
@@ -74,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     ActivityResultLauncher<Intent> someActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             new ActivityResultCallback<ActivityResult>() {
+                @RequiresApi(api = Build.VERSION_CODES.R)
                 @Override
                 public void onActivityResult(ActivityResult result) {
                     Intent data = result.getData();
@@ -153,10 +157,21 @@ public class MainActivity extends AppCompatActivity {
                     acR = acR / count;
                     acB = acB / count;
 
+
+
                     // Hitung SPO2
                     double spo2 = 100 - 5 * ((acR / dcR) / (acB / dcB));
                     ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
                     Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
+
+                    File deletedVideo = new File(data.getData().getPath());
+                    ContentResolver contentResolver = getContentResolver();
+                    contentResolver.delete(videoUri, null, null);
+//                    if(deletedVideo.delete()) {
+//                        Log.i("VIDEO_RECORD_TAG", "Video has been deleted");
+//                    } else {
+//                        Log.i("VIDEO_RECORD_TAG", "Video doesn't exist");
+//                    }
                 }
             });
 
