@@ -154,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
                     acB = acB / count;
 
                     // Hitung SPO2
-                    Log.i("VIDEO_RECORD_TAG", Integer.toString(count));
                     double spo2 = 100 - 5 * ((acR / dcR) / (acB / dcB));
                     ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
                     Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
