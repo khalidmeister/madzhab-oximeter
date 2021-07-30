@@ -11,5 +11,5 @@ This app is implemented using:
 - JavaCV as the connector to the OpenCV and FFmpeg.
 
 ## References
-[1] A. K. Kanva, C. J. Sharma and S. Deb, "Determination of SpO2 and heart-rate using smartphone camera," Proceedings of The 2014 International Conference on Control, Instrumentation, Energy and Communication (CIEC), 2014, pp. 237-241, doi: 10.1109/CIEC.2014.6959086.
+[1] A. K. Kanva, C. J. Sharma and S. Deb, "Determination of SpO2 and heart-rate using smartphone camera," Proceedings of The 2014 International Conference on Control, Instrumentation, Energy and Communication (CIEC), 2014, pp. 237-241, doi: 10.1109/CIEC.2014.6959086.<br>
 [2] Scully, C. G., Lee, J., Meyer, J., Gorbach, A. M., Granquist-Fraser, D., Mendelson, Y., & Chon, K. H. (2012). Physiological parameter monitoring from optical recordings with a mobile phone. IEEE transactions on bio-medical engineering, 59(2), 303–306. https://doi.org/10.1109/TBME.2011.2163157
