@@ -157,21 +157,10 @@ public class MainActivity extends AppCompatActivity {
                     acR = acR / count;
                     acB = acB / count;
 
-
-
                     // Hitung SPO2
                     double spo2 = 100 - 5 * ((acR / dcR) / (acB / dcB));
                     ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
                     Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
-
-                    File deletedVideo = new File(data.getData().getPath());
-                    ContentResolver contentResolver = getContentResolver();
-                    contentResolver.delete(videoUri, null, null);
-//                    if(deletedVideo.delete()) {
-//                        Log.i("VIDEO_RECORD_TAG", "Video has been deleted");
-//                    } else {
-//                        Log.i("VIDEO_RECORD_TAG", "Video doesn't exist");
-//                    }
                 }
             });
 
