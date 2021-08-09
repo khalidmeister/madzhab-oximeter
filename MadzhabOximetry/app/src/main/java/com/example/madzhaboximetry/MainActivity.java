@@ -2,6 +2,7 @@ package com.example.madzhaboximetry;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -126,8 +127,8 @@ public class MainActivity extends AppCompatActivity {
                             // Crop the Image in center with size 50x50
                             int x = mat.rows() / 2;
                             int y = mat.cols() / 2;
-                            int w = 50 / 2;
-                            int h = 50 / 2;
+                            int w = 100 / 2;
+                            int h = 100 / 2;
                             mat = mat.submat(x - w, x + w, y - h, y + h);
 
                             // Change the color space from BGR to RGB
@@ -151,14 +152,19 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
+                    Log.i("VIDEO_RECORD_TAG", "Jumlah Frame: " + count);
+
                     // Calculate the average
                     dcR = dcR / count;
                     dcB = dcB / count;
                     acR = acR / count;
                     acB = acB / count;
 
+                    Log.i("VIDEO_RECORD_TAG", "DC Red: " + dcR);
+                    Log.i("VIDEO_RECORD_TAG", "DC Blue: " + dcB);
+
                     // Hitung SPO2
-                    double spo2 = 100 - 5 * ((acR / dcR) / (acB / dcB));
+                    double spo2 = 96.87193145 + (3.08854472 * ( (acR / dcR) / (acB / dcB) ));
                     ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
                     Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
                 }
@@ -166,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void recordVideo() {
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 5);
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 15);
         someActivityResultLauncher.launch(intent);
     }
 
