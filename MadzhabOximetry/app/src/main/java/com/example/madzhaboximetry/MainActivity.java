@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.icu.number.Scale;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -34,11 +35,14 @@ import org.bytedeco.opencv.opencv_java;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.opencv.imgproc.Imgproc.INTER_AREA;
 
 public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
