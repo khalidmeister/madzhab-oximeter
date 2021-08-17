@@ -112,12 +112,6 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
 
-                    double dcR = 0;
-                    double dcB = 0;
-                    double acR = 0;
-                    double acB = 0;
-
-                    int count = 0;
                     for(int i=0; i < grabber.getLengthInFrames(); i++) {
                         Frame nthFrame = null;
                         try {
@@ -127,14 +121,19 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         if(nthFrame == null) {
-                            continue;
                         } else {
                             Mat mat = converterToMat.convertToOrgOpenCvCoreMat(nthFrame);
 
+                            Log.i("VIDEO_RECORD_TAG", mat.rows() + "x" + mat.cols());
+
+                            int x = mat.rows() / 4;
+                            int y = mat.cols() / 3;
+                            double p_max = 0;
+                            int m_max = 0;
+                            int n_max = 0;
+
+                            // Get the best ROI
                             if (i==0) {
-                                double p_max = 0;
-                                int m_max = 0;
-                                int n_max = 0;
                                 Mat temp = mat;
 
                                 // Get the Red and Blue band
@@ -151,12 +150,13 @@ public class MainActivity extends AppCompatActivity {
 
                                 Imgproc.threshold(temp, thresh, meanRgb.get(0, 0)[0], 255, Imgproc.THRESH_BINARY);
 
-                                int x = thresh.rows() / 4;
-                                int y = thresh.cols() / 3;
+                                int xt = thresh.rows() / 4;
+                                int yt = thresh.cols() / 3;
+
                                 // Get the best ROI
                                 for(int m = 0; m < 4; m++) {
                                     for(int n = 0; n < 3; n++) {
-                                        Mat new_temp = thresh.submat(x*(m), x*(m+1), y*(n), y*(n+1));
+                                        Mat new_temp = thresh.submat(xt*(m), xt*(m+1), yt*(n), yt*(n+1));
 
                                         MatOfDouble mu = new MatOfDouble();
                                         MatOfDouble sigma = new MatOfDouble();
@@ -177,34 +177,35 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                     }
                                 }
-
                                 Log.i("VIDEO_RECORD_TAG", "The Best ROI: " + m_max + " " + n_max);
                             }
-//                            // Crop the Image in center with size 50x50
-//                            int x = mat.rows() / 2;
-//                            int y = mat.cols() / 2;
-//                            int w = 100 / 2;
-//                            int h = 100 / 2;
-//                            mat = mat.submat(x - w, x + w, y - h, y + h);
-//
-//                            // Change the color space from BGR to RGB
-//                            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
-//
-//                            // Get the Red and Blue band
-//                            List<Mat> rgb = new ArrayList<>(3);
-//                            Core.split(mat, rgb);
-//
-//                            // Calculate the mean and std
-//                            MatOfDouble meanRgb = new MatOfDouble();
-//                            MatOfDouble stdRgb = new MatOfDouble();
-//                            Core.meanStdDev(mat, meanRgb, stdRgb);
-//
-//                            // Catch the intermediate result
-//                            dcR += meanRgb.get(0, 0)[0];
-//                            dcB += meanRgb.get(2, 0)[0];
-//                            acR += stdRgb.get(0, 0)[0];
-//                            acB += stdRgb.get(2, 0)[0];
-//                            count++;
+
+                            // Crop the Image with the ROI
+                            mat = mat.submat(x * (m_max), x * (m_max+1), y * (n_max), y * (n_max+1));
+
+                            // Change the color space from BGR to RGB
+                            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
+
+                            // Validate the size
+                            Log.i("VIDEO_RECORD_TAG", mat.rows() + "x" + mat.cols());
+
+                            // Get the Red and Blue band
+                            List<Mat> rgb = new ArrayList<>(3);
+                            Core.split(mat, rgb);
+
+                            // Calculate the mean and std
+                            MatOfDouble meanRgb = new MatOfDouble();
+                            MatOfDouble stdRgb = new MatOfDouble();
+                            Core.meanStdDev(mat, meanRgb, stdRgb);
+
+                            List<Double> sigRed = new ArrayList<Double>();
+                            List<Double> sigBlue = new ArrayList<Double>();
+
+                            sigRed.add(meanRgb.get(0, 0)[0]);
+                            sigBlue.add(meanRgb.get(2, 0)[0]);
+
+                            Log.i("SIGNAL_RED", String.valueOf(meanRgb.get(0, 0)[0]));
+                            Log.i("SIGNAL_BLUE", String.valueOf(meanRgb.get(2, 0)[0]));
                         }
                     }
 //                    Log.i("VIDEO_RECORD_TAG", "Jumlah Frame: " + count);
