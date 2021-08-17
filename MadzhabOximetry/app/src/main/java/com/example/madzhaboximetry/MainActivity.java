@@ -131,49 +131,97 @@ public class MainActivity extends AppCompatActivity {
                         } else {
                             Mat mat = converterToMat.convertToOrgOpenCvCoreMat(nthFrame);
 
-                            // Crop the Image in center with size 50x50
-                            int x = mat.rows() / 2;
-                            int y = mat.cols() / 2;
-                            int w = 100 / 2;
-                            int h = 100 / 2;
-                            mat = mat.submat(x - w, x + w, y - h, y + h);
+                            if (i==0) {
+                                double p_max = 0;
+                                int m_max = 0;
+                                int n_max = 0;
+                                Mat temp = mat;
 
-                            // Change the color space from BGR to RGB
-                            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
+                                // Get the Red and Blue band
+                                List<Mat> rgb = new ArrayList<>(3);
+                                Core.split(mat, rgb);
+                                temp = rgb.get(2);
 
-                            // Get the Red and Blue band
-                            List<Mat> rgb = new ArrayList<>(3);
-                            Core.split(mat, rgb);
+                                // Calculate the mean and std
+                                MatOfDouble meanRgb = new MatOfDouble();
+                                MatOfDouble stdRgb = new MatOfDouble();
+                                Core.meanStdDev(mat, meanRgb, stdRgb);
 
-                            // Calculate the mean and std
-                            MatOfDouble meanRgb = new MatOfDouble();
-                            MatOfDouble stdRgb = new MatOfDouble();
-                            Core.meanStdDev(mat, meanRgb, stdRgb);
+                                Mat thresh = new Mat();
 
-                            // Catch the intermediate result
-                            dcR += meanRgb.get(0, 0)[0];
-                            dcB += meanRgb.get(2, 0)[0];
-                            acR += stdRgb.get(0, 0)[0];
-                            acB += stdRgb.get(2, 0)[0];
-                            count++;
+                                Imgproc.threshold(temp, thresh, meanRgb.get(0, 0)[0], 255, Imgproc.THRESH_BINARY);
+
+                                int x = thresh.rows() / 4;
+                                int y = thresh.cols() / 3;
+                                // Get the best ROI
+                                for(int m = 0; m < 4; m++) {
+                                    for(int n = 0; n < 3; n++) {
+                                        Mat new_temp = thresh.submat(x*(m), x*(m+1), y*(n), y*(n+1));
+
+                                        MatOfDouble mu = new MatOfDouble();
+                                        MatOfDouble sigma = new MatOfDouble();
+                                        Core.meanStdDev(new_temp, mu, sigma);
+
+                                        double p = Math.abs(255/2 - mu.get(0, 0)[0]);
+
+                                        if (m == 0 && n == 0) {
+                                            p_max = p;
+                                            m_max = m;
+                                            n_max = n;
+                                        } else {
+                                            if (p < p_max) {
+                                                p_max = p;
+                                                m_max = m;
+                                                n_max = n;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Log.i("VIDEO_RECORD_TAG", "The Best ROI: " + m_max + " " + n_max);
+                            }
+//                            // Crop the Image in center with size 50x50
+//                            int x = mat.rows() / 2;
+//                            int y = mat.cols() / 2;
+//                            int w = 100 / 2;
+//                            int h = 100 / 2;
+//                            mat = mat.submat(x - w, x + w, y - h, y + h);
+//
+//                            // Change the color space from BGR to RGB
+//                            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
+//
+//                            // Get the Red and Blue band
+//                            List<Mat> rgb = new ArrayList<>(3);
+//                            Core.split(mat, rgb);
+//
+//                            // Calculate the mean and std
+//                            MatOfDouble meanRgb = new MatOfDouble();
+//                            MatOfDouble stdRgb = new MatOfDouble();
+//                            Core.meanStdDev(mat, meanRgb, stdRgb);
+//
+//                            // Catch the intermediate result
+//                            dcR += meanRgb.get(0, 0)[0];
+//                            dcB += meanRgb.get(2, 0)[0];
+//                            acR += stdRgb.get(0, 0)[0];
+//                            acB += stdRgb.get(2, 0)[0];
+//                            count++;
                         }
                     }
-
-                    Log.i("VIDEO_RECORD_TAG", "Jumlah Frame: " + count);
-
-                    // Calculate the average
-                    dcR = dcR / count;
-                    dcB = dcB / count;
-                    acR = acR / count;
-                    acB = acB / count;
-
-                    Log.i("VIDEO_RECORD_TAG", "DC Red: " + dcR);
-                    Log.i("VIDEO_RECORD_TAG", "DC Blue: " + dcB);
-
-                    // Hitung SPO2
-                    double spo2 = 96.87193145 + (3.08854472 * ( (acR / dcR) / (acB / dcB) ));
-                    ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
-                    Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
+//                    Log.i("VIDEO_RECORD_TAG", "Jumlah Frame: " + count);
+//
+//                    // Calculate the average
+//                    dcR = dcR / count;
+//                    dcB = dcB / count;
+//                    acR = acR / count;
+//                    acB = acB / count;
+//
+//                    Log.i("VIDEO_RECORD_TAG", "DC Red: " + dcR);
+//                    Log.i("VIDEO_RECORD_TAG", "DC Blue: " + dcB);
+//
+//                    // Hitung SPO2
+//                    double spo2 = 96.87193145 + (3.08854472 * ( (acR / dcR) / (acB / dcB) ));
+//                    ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
+//                    Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
                 }
             });
 
