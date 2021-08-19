@@ -24,8 +24,15 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.motion.utils.LinearCurveFit;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
@@ -41,6 +48,7 @@ import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.opencv.imgproc.Imgproc.INTER_AREA;
@@ -112,6 +120,11 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
 
+                    List<Entry> dataRed = new ArrayList<>();
+                    List<Double> sigRed = new ArrayList<Double>();
+                    List<Double> sigBlue = new ArrayList<Double>();
+
+                    // Retrieving Signals
                     for(int i=0; i < grabber.getLengthInFrames(); i++) {
                         Frame nthFrame = null;
                         try {
@@ -123,8 +136,6 @@ public class MainActivity extends AppCompatActivity {
                         if(nthFrame == null) {
                         } else {
                             Mat mat = converterToMat.convertToOrgOpenCvCoreMat(nthFrame);
-
-                            Log.i("VIDEO_RECORD_TAG", mat.rows() + "x" + mat.cols());
 
                             int x = mat.rows() / 4;
                             int y = mat.cols() / 3;
@@ -186,9 +197,6 @@ public class MainActivity extends AppCompatActivity {
                             // Change the color space from BGR to RGB
                             Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
 
-                            // Validate the size
-                            Log.i("VIDEO_RECORD_TAG", mat.rows() + "x" + mat.cols());
-
                             // Get the Red and Blue band
                             List<Mat> rgb = new ArrayList<>(3);
                             Core.split(mat, rgb);
@@ -198,31 +206,114 @@ public class MainActivity extends AppCompatActivity {
                             MatOfDouble stdRgb = new MatOfDouble();
                             Core.meanStdDev(mat, meanRgb, stdRgb);
 
-                            List<Double> sigRed = new ArrayList<Double>();
-                            List<Double> sigBlue = new ArrayList<Double>();
-
                             sigRed.add(meanRgb.get(0, 0)[0]);
                             sigBlue.add(meanRgb.get(2, 0)[0]);
-
-                            Log.i("SIGNAL_RED", String.valueOf(meanRgb.get(0, 0)[0]));
-                            Log.i("SIGNAL_BLUE", String.valueOf(meanRgb.get(2, 0)[0]));
                         }
                     }
-//                    Log.i("VIDEO_RECORD_TAG", "Jumlah Frame: " + count);
-//
-//                    // Calculate the average
-//                    dcR = dcR / count;
-//                    dcB = dcB / count;
-//                    acR = acR / count;
-//                    acB = acB / count;
-//
-//                    Log.i("VIDEO_RECORD_TAG", "DC Red: " + dcR);
-//                    Log.i("VIDEO_RECORD_TAG", "DC Blue: " + dcB);
-//
-//                    // Hitung SPO2
-//                    double spo2 = 96.87193145 + (3.08854472 * ( (acR / dcR) / (acB / dcB) ));
-//                    ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
-//                    Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
+
+                    // Get the FPS
+                    int N = grabber.getLengthInFrames();
+                    int fps = N / 15;
+                    Log.i("VIDEO_RECORD_TAG", "# of N: " + N);
+
+                    // Polynomial Curve Fitting
+                    double[] pcfRed = pcf(N, sigRed);
+                    double[] pcfBlue = pcf(N, sigBlue);
+
+                    List<Double> sigRedClean = new ArrayList<>();
+                    List<Double> sigBlueClean = new ArrayList<>();
+
+                    double temp;
+
+                    for(int j = 0; j < N; j++) {
+                        temp = sigRed.get(j) - pcfRed[j];
+                        sigRedClean.add(temp);
+
+                        temp = sigBlue.get(j) - pcfBlue[j];
+                        sigBlueClean.add(temp);
+                    }
+
+                    // Get the minimum number of signals
+                    int nFFT = 1;
+                    while(nFFT < N) {
+                        nFFT *= 2;
+                    }
+                    nFFT /= 2;
+
+                    Log.i("VIDEO_RECORD_TAG", "# of fps: " + fps);
+                    Log.i("VIDEO_RECORD_TAG", "# for FFT: " + nFFT);
+
+                    // Nanti ambil data dari detik ke-3
+                    sigRedClean = sigRedClean.subList((fps * 3) - 1, N);
+                    sigBlueClean = sigBlueClean.subList((fps * 3) - 1, N);
+
+                    // Sama, sekalian dengan pengambilan nilai yang termasuk batas kelipatan ke dua minimum;
+                    sigRedClean = sigRedClean.subList(0, nFFT);
+                    sigBlueClean = sigBlueClean.subList(0, nFFT);
+
+                    // Calculate FFT
+                    FFT fft = new FFT(nFFT);
+
+                    double[] window = fft.getWindow();
+                    double[] imRed = new double[nFFT];
+                    double[] imBlue = new double[nFFT];
+
+                    fft.fft(sigRedClean, imRed);
+                    fft.fft(sigBlueClean, imBlue);
+
+                    // Set to absolute to all values
+                    double[] sigRedAbs = new double[nFFT];
+                    double[] sigBlueAbs = new double[nFFT];
+
+                    for(int j=0; j < nFFT; j++) {
+                        sigRedAbs[j] = Math.abs(sigRedClean.get(j));
+                        sigBlueAbs[j] = Math.abs(sigBlueClean.get(j));
+                    }
+
+                    // Display The Result
+                    Log.i("VIDEO_RECORD_TAG", "Signal Red (PCF + FFT): " + Arrays.toString(sigRedAbs));
+                    Log.i("VIDEO_RECORD_TAG", "Signal Blue (PCF + FFT): " + Arrays.toString(sigBlueAbs));
+
+                    // Get the DC component
+                    double dcRed = sigRedAbs[0];
+                    double dcBlue = sigBlueAbs[0];
+
+                    // Get the AC component
+                    double acRed = 0;
+                    double acBlue = 0;
+
+                    int indexRed = 0;
+                    int indexBlue = 0;
+
+                    for (int j = 1; j < nFFT - 1; j++) {
+                        if(sigRedAbs[j] > acRed) {
+                            if(sigRedAbs[j] > sigRedAbs[j-1] ) {
+                                if(sigRedAbs[j] < sigRedAbs[j+1] ) {
+                                    acRed = sigRedAbs[j];
+                                    indexRed = j;
+                                }
+                            }
+                        }
+
+                        if(sigBlueAbs[j] > acBlue ) {
+                            if (sigBlueAbs[j] > sigBlueAbs[j-1] ) {
+                                if (sigBlueAbs[j] < sigBlueAbs[j+1] ) {
+                                    acBlue = sigBlueAbs[j];
+                                    indexBlue = j;
+                                }
+                            }
+                        }
+                    }
+
+                    Log.i("VIDEO_RECORD_TAG", "DC Red: " + dcRed);
+                    Log.i("VIDEO_RECORD_TAG", "DC Blue: " + dcBlue);
+                    Log.i("VIDEO_RECORD_TAG", "AC Red: " + acRed + " Index: " + indexRed);
+                    Log.i("VIDEO_RECORD_TAG", "AC Blue: " + acBlue + " Index: " + indexBlue);
+
+                    // Hitung SPO2
+                    double spo2 = 110 - 25 * ((acRed / dcRed) / (acBlue / dcBlue));
+                    ((TextView)findViewById(R.id.hasilSpo2)).setText("Nilai SPO2 anda sebesar " + String.format("%.2f", spo2));
+                    Log.i("VIDEO_RECORD_TAG", "Nilai SPO2 anda sebesar " + spo2);
                 }
             });
 
@@ -230,6 +321,101 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
         intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 15);
         someActivityResultLauncher.launch(intent);
+    }
+
+    private static double min(double[] array) {
+        double min = array[0];
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < min) {
+                min = array[i];
+            }
+        }
+        return min;
+    }
+
+    private static double max(double[] array) {
+        double max = array[0];
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] > max) {
+                max = array[i];
+            }
+        }
+        return max;
+    }
+
+    private static double[] pcf(int N, List<Double> signal) {
+        double[] x = new double[N];
+        double[] y = new double[N];
+
+        for (int i = 0; i < N; i++) {
+            x[i] = i;
+            y[i] = signal.get(i);
+        }
+
+        int n = 3;
+        double X[] = new double[2 * n + 1];
+        for (int i = 0; i < 2 * n + 1; i++) {
+            X[i] = 0;
+            for (int j = 0; j < N; j++)
+                X[i] = X[i] + Math.pow(x[j], i);        //consecutive positions of the array will store N,sigma(xi),sigma(xi^2),sigma(xi^3)....sigma(xi^2n)
+        }
+
+        double[][] B = new double[n + 1][n + 2];            //B is the Normal matrix(augmented) that will store the equations, 'a' is for value of the final coefficients
+        double[] a = new double[n + 1];
+        for (int i = 0; i <= n; i++)
+            for (int j = 0; j <= n; j++)
+                B[i][j] = X[i + j];            //Build the Normal matrix by storing the corresponding coefficients at the right positions except the last column of the matrix
+
+        double[] Y = new double[n + 1];                    //Array to store the values of sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
+        for (int i = 0; i < n + 1; i++) {
+            Y[i] = 0;
+            for (int j = 0; j < N; j++)
+                Y[i] = Y[i] + Math.pow(x[j], i) * y[j];        //consecutive positions will store sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
+        }
+
+        for (int i = 0; i <= n; i++)
+            B[i][n + 1] = Y[i];                //load the values of Y as the last column of B(Normal Matrix but augmented)
+        n = n + 1;
+
+        for (int i = 0; i < n; i++)                    //From now Gaussian Elimination starts(can be ignored) to solve the set of linear equations (Pivotisation)
+            for (int k = i + 1; k < n; k++)
+                if (B[i][i] < B[k][i])
+                    for (int j = 0; j <= n; j++) {
+                        double temp = B[i][j];
+                        B[i][j] = B[k][j];
+                        B[k][j] = temp;
+                    }
+
+        for (int i = 0; i < n - 1; i++)            //loop to perform the gauss elimination
+            for (int k = i + 1; k < n; k++) {
+                double t = B[k][i] / B[i][i];
+                for (int j = 0; j <= n; j++)
+                    B[k][j] = B[k][j] - t * B[i][j];    //make the elements below the pivot elements equal to zero or elimnate the variables
+            }
+
+        for (int i = n - 1; i >= 0; i--)                //back-substitution
+        {                        //x is an array whose values correspond to the values of x,y,z..
+            a[i] = B[i][n];                //make the variable to be calculated equal to the rhs of the last equation
+            for (int j = 0; j < n; j++)
+                if (j != i)            //then subtract all the lhs values except the coefficient of the variable whose value                                   is being calculated
+                    a[i] = a[i] - B[i][j] * a[j];
+            a[i] = a[i] / B[i][i];            //now finally divide the rhs by the coefficient of the variable to be calculated
+        }
+
+        int min_x = (int) min(x);
+        int max_x = (int) max(x);
+
+        double[] pcfResult = new double[N];
+
+        for(int i = min_x; i < max_x; i++) {
+            double yp=a[0];
+            for (int j=1; j<n; j++) {
+                yp = yp + Math.pow(i, j) * a[j];
+            }
+            pcfResult[i] = yp;
+        }
+
+        return pcfResult;
     }
 
     public static String getFilePathFromContentUri(Uri contentUri, ContentResolver contentResolver) {
