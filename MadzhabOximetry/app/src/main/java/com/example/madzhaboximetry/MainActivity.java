@@ -216,22 +216,22 @@ public class MainActivity extends AppCompatActivity {
                     int fps = N / 15;
                     Log.i("VIDEO_RECORD_TAG", "# of N: " + N);
 
-                    // Polynomial Curve Fitting
-                    double[] pcfRed = pcf(N, sigRed);
-                    double[] pcfBlue = pcf(N, sigBlue);
-
-                    List<Double> sigRedClean = new ArrayList<>();
-                    List<Double> sigBlueClean = new ArrayList<>();
-
-                    double temp;
-
-                    for(int j = 0; j < N; j++) {
-                        temp = sigRed.get(j) - pcfRed[j];
-                        sigRedClean.add(temp);
-
-                        temp = sigBlue.get(j) - pcfBlue[j];
-                        sigBlueClean.add(temp);
-                    }
+//                    // Polynomial Curve Fitting
+//                    double[] pcfRed = pcf(N, sigRed);
+//                    double[] pcfBlue = pcf(N, sigBlue);
+//
+//                    List<Double> sigRedClean = new ArrayList<>();
+//                    List<Double> sigBlueClean = new ArrayList<>();
+//
+//                    double temp;
+//
+//                    for(int j = 0; j < N; j++) {
+//                        temp = sigRed.get(j) - pcfRed[j];
+//                        sigRedClean.add(temp);
+//
+//                        temp = sigBlue.get(j) - pcfBlue[j];
+//                        sigBlueClean.add(temp);
+//                    }
 
                     // Get the minimum number of signals
                     int nFFT = 1;
@@ -244,12 +244,12 @@ public class MainActivity extends AppCompatActivity {
                     Log.i("VIDEO_RECORD_TAG", "# for FFT: " + nFFT);
 
                     // Nanti ambil data dari detik ke-3
-                    sigRedClean = sigRedClean.subList((fps * 3) - 1, N);
-                    sigBlueClean = sigBlueClean.subList((fps * 3) - 1, N);
+                    sigRed = sigRed.subList((fps * 3) - 1, N-1);
+                    sigBlue = sigBlue.subList((fps * 3) - 1, N-1);
 
                     // Sama, sekalian dengan pengambilan nilai yang termasuk batas kelipatan ke dua minimum;
-                    sigRedClean = sigRedClean.subList(0, nFFT);
-                    sigBlueClean = sigBlueClean.subList(0, nFFT);
+                    sigRed = sigRed.subList(0, nFFT);
+                    sigBlue = sigBlue.subList(0, nFFT);
 
                     // Calculate FFT
                     FFT fft = new FFT(nFFT);
@@ -258,16 +258,16 @@ public class MainActivity extends AppCompatActivity {
                     double[] imRed = new double[nFFT];
                     double[] imBlue = new double[nFFT];
 
-                    fft.fft(sigRedClean, imRed);
-                    fft.fft(sigBlueClean, imBlue);
+                    fft.fft(sigRed, imRed);
+                    fft.fft(sigBlue, imBlue);
 
                     // Set to absolute to all values
                     double[] sigRedAbs = new double[nFFT];
                     double[] sigBlueAbs = new double[nFFT];
 
                     for(int j=0; j < nFFT; j++) {
-                        sigRedAbs[j] = Math.abs(sigRedClean.get(j));
-                        sigBlueAbs[j] = Math.abs(sigBlueClean.get(j));
+                        sigRedAbs[j] = Math.abs(sigRed.get(j));
+                        sigBlueAbs[j] = Math.abs(sigBlue.get(j));
                     }
 
                     // Display The Result
@@ -286,18 +286,16 @@ public class MainActivity extends AppCompatActivity {
                     int indexBlue = 0;
 
                     for (int j = 1; j < nFFT - 1; j++) {
-                        if(sigRedAbs[j] > acRed) {
-                            if(sigRedAbs[j] > sigRedAbs[j-1] ) {
-                                if(sigRedAbs[j] < sigRedAbs[j+1] ) {
+                        double freq = j * fps / nFFT;
+                        if(freq >= 1.0 && freq <= 2.0) {
+                            if(sigRedAbs[j] > sigRedAbs[j-1] && sigRedAbs[j] > sigRedAbs[j+1]) {
+                                if(sigRedAbs[j] > acRed) {
                                     acRed = sigRedAbs[j];
                                     indexRed = j;
                                 }
                             }
-                        }
-
-                        if(sigBlueAbs[j] > acBlue ) {
-                            if (sigBlueAbs[j] > sigBlueAbs[j-1] ) {
-                                if (sigBlueAbs[j] < sigBlueAbs[j+1] ) {
+                            if(sigBlueAbs[j] > sigBlueAbs[j-1] && sigBlueAbs[j] > sigBlueAbs[j+1]) {
+                                if(sigBlueAbs[j] > acBlue) {
                                     acBlue = sigBlueAbs[j];
                                     indexBlue = j;
                                 }
@@ -343,80 +341,80 @@ public class MainActivity extends AppCompatActivity {
         return max;
     }
 
-    private static double[] pcf(int N, List<Double> signal) {
-        double[] x = new double[N];
-        double[] y = new double[N];
-
-        for (int i = 0; i < N; i++) {
-            x[i] = i;
-            y[i] = signal.get(i);
-        }
-
-        int n = 3;
-        double X[] = new double[2 * n + 1];
-        for (int i = 0; i < 2 * n + 1; i++) {
-            X[i] = 0;
-            for (int j = 0; j < N; j++)
-                X[i] = X[i] + Math.pow(x[j], i);        //consecutive positions of the array will store N,sigma(xi),sigma(xi^2),sigma(xi^3)....sigma(xi^2n)
-        }
-
-        double[][] B = new double[n + 1][n + 2];            //B is the Normal matrix(augmented) that will store the equations, 'a' is for value of the final coefficients
-        double[] a = new double[n + 1];
-        for (int i = 0; i <= n; i++)
-            for (int j = 0; j <= n; j++)
-                B[i][j] = X[i + j];            //Build the Normal matrix by storing the corresponding coefficients at the right positions except the last column of the matrix
-
-        double[] Y = new double[n + 1];                    //Array to store the values of sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
-        for (int i = 0; i < n + 1; i++) {
-            Y[i] = 0;
-            for (int j = 0; j < N; j++)
-                Y[i] = Y[i] + Math.pow(x[j], i) * y[j];        //consecutive positions will store sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
-        }
-
-        for (int i = 0; i <= n; i++)
-            B[i][n + 1] = Y[i];                //load the values of Y as the last column of B(Normal Matrix but augmented)
-        n = n + 1;
-
-        for (int i = 0; i < n; i++)                    //From now Gaussian Elimination starts(can be ignored) to solve the set of linear equations (Pivotisation)
-            for (int k = i + 1; k < n; k++)
-                if (B[i][i] < B[k][i])
-                    for (int j = 0; j <= n; j++) {
-                        double temp = B[i][j];
-                        B[i][j] = B[k][j];
-                        B[k][j] = temp;
-                    }
-
-        for (int i = 0; i < n - 1; i++)            //loop to perform the gauss elimination
-            for (int k = i + 1; k < n; k++) {
-                double t = B[k][i] / B[i][i];
-                for (int j = 0; j <= n; j++)
-                    B[k][j] = B[k][j] - t * B[i][j];    //make the elements below the pivot elements equal to zero or elimnate the variables
-            }
-
-        for (int i = n - 1; i >= 0; i--)                //back-substitution
-        {                        //x is an array whose values correspond to the values of x,y,z..
-            a[i] = B[i][n];                //make the variable to be calculated equal to the rhs of the last equation
-            for (int j = 0; j < n; j++)
-                if (j != i)            //then subtract all the lhs values except the coefficient of the variable whose value                                   is being calculated
-                    a[i] = a[i] - B[i][j] * a[j];
-            a[i] = a[i] / B[i][i];            //now finally divide the rhs by the coefficient of the variable to be calculated
-        }
-
-        int min_x = (int) min(x);
-        int max_x = (int) max(x);
-
-        double[] pcfResult = new double[N];
-
-        for(int i = min_x; i < max_x; i++) {
-            double yp=a[0];
-            for (int j=1; j<n; j++) {
-                yp = yp + Math.pow(i, j) * a[j];
-            }
-            pcfResult[i] = yp;
-        }
-
-        return pcfResult;
-    }
+//    private static double[] pcf(int N, List<Double> signal) {
+//        double[] x = new double[N];
+//        double[] y = new double[N];
+//
+//        for (int i = 0; i < N; i++) {
+//            x[i] = i;
+//            y[i] = signal.get(i);
+//        }
+//
+//        int n = 3;
+//        double X[] = new double[2 * n + 1];
+//        for (int i = 0; i < 2 * n + 1; i++) {
+//            X[i] = 0;
+//            for (int j = 0; j < N; j++)
+//                X[i] = X[i] + Math.pow(x[j], i);        //consecutive positions of the array will store N,sigma(xi),sigma(xi^2),sigma(xi^3)....sigma(xi^2n)
+//        }
+//
+//        double[][] B = new double[n + 1][n + 2];            //B is the Normal matrix(augmented) that will store the equations, 'a' is for value of the final coefficients
+//        double[] a = new double[n + 1];
+//        for (int i = 0; i <= n; i++)
+//            for (int j = 0; j <= n; j++)
+//                B[i][j] = X[i + j];            //Build the Normal matrix by storing the corresponding coefficients at the right positions except the last column of the matrix
+//
+//        double[] Y = new double[n + 1];                    //Array to store the values of sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
+//        for (int i = 0; i < n + 1; i++) {
+//            Y[i] = 0;
+//            for (int j = 0; j < N; j++)
+//                Y[i] = Y[i] + Math.pow(x[j], i) * y[j];        //consecutive positions will store sigma(yi),sigma(xi*yi),sigma(xi^2*yi)...sigma(xi^n*yi)
+//        }
+//
+//        for (int i = 0; i <= n; i++)
+//            B[i][n + 1] = Y[i];                //load the values of Y as the last column of B(Normal Matrix but augmented)
+//        n = n + 1;
+//
+//        for (int i = 0; i < n; i++)                    //From now Gaussian Elimination starts(can be ignored) to solve the set of linear equations (Pivotisation)
+//            for (int k = i + 1; k < n; k++)
+//                if (B[i][i] < B[k][i])
+//                    for (int j = 0; j <= n; j++) {
+//                        double temp = B[i][j];
+//                        B[i][j] = B[k][j];
+//                        B[k][j] = temp;
+//                    }
+//
+//        for (int i = 0; i < n - 1; i++)            //loop to perform the gauss elimination
+//            for (int k = i + 1; k < n; k++) {
+//                double t = B[k][i] / B[i][i];
+//                for (int j = 0; j <= n; j++)
+//                    B[k][j] = B[k][j] - t * B[i][j];    //make the elements below the pivot elements equal to zero or elimnate the variables
+//            }
+//
+//        for (int i = n - 1; i >= 0; i--)                //back-substitution
+//        {                        //x is an array whose values correspond to the values of x,y,z..
+//            a[i] = B[i][n];                //make the variable to be calculated equal to the rhs of the last equation
+//            for (int j = 0; j < n; j++)
+//                if (j != i)            //then subtract all the lhs values except the coefficient of the variable whose value                                   is being calculated
+//                    a[i] = a[i] - B[i][j] * a[j];
+//            a[i] = a[i] / B[i][i];            //now finally divide the rhs by the coefficient of the variable to be calculated
+//        }
+//
+//        int min_x = (int) min(x);
+//        int max_x = (int) max(x);
+//
+//        double[] pcfResult = new double[N];
+//
+//        for(int i = min_x; i < max_x; i++) {
+//            double yp=a[0];
+//            for (int j=1; j<n; j++) {
+//                yp = yp + Math.pow(i, j) * a[j];
+//            }
+//            pcfResult[i] = yp;
+//        }
+//
+//        return pcfResult;
+//    }
 
     public static String getFilePathFromContentUri(Uri contentUri, ContentResolver contentResolver) {
         String filePath;
